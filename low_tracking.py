@@ -28,7 +28,7 @@ for t in tqdm(range(0, END_TIME)):
     d1['datetime'] = t
     ini_lon = d1.iat[0,2]
     ini_lat = d1.iat[0,3]
-    for j in range(t+1,100): # 100時間も追跡しないでしょ？
+    for j in range(t+1,END_TIME):
       try:
         next_low = pd.read_csv(f'{OUT_DIR}{j}.csv')
         if number == 0: # 低気圧が初めて検知された場合（開始番号が0）は発生開始位置情報を参照

@@ -1,10 +1,10 @@
+import netcdf as nc
 import timeutil as tu
 
 import os
 import sys
 import cv2
 import pyproj
-import netCDF4
 import numpy as np
 import pandas as pd
 import configparser
@@ -52,31 +52,16 @@ else:
 tu.start()
 
 sys.stderr.write("*** NetCDFファイル読み込み中 ***\n")
-nc_s1 = netCDF4.Dataset(config['NetCDF_FILE']['nc_s1'], 'r')
-nc_s2 = netCDF4.Dataset(config['NetCDF_FILE']['nc_s2'], 'r')
-nc_s3 = netCDF4.Dataset(config['NetCDF_FILE']['nc_s3'], 'r')
-nc_s4 = netCDF4.Dataset(config['NetCDF_FILE']['nc_s4'], 'r')
-nc_s5 = netCDF4.Dataset(config['NetCDF_FILE']['nc_s5'], 'r')
-
-lon_s = nc_s1['longitude'][:]
-lat_s = nc_s1['latitude'][:]
-
-# 閏年に注意
-nc_s1 = nc_s1['MSL'][15:][:][:] / 100
-nc_s2 = nc_s2['MSL'][:][:][:] / 100
-nc_s3 = nc_s3['MSL'][:][:][:] / 100
-nc_s4 = nc_s4['MSL'][:][:][:] / 100
-nc_s5 = nc_s5['MSL'][:735][:][:] / 100
-nc_s = np.concatenate([nc_s1,nc_s2, nc_s3, nc_s4, nc_s5])
-
+lon_s, lat_s, nc_s = nc.load()
 sys.stderr.write("*** 読み込み完了 ***\n")
+
 tu.end()
 
 END_TIME = int(config['Detection']['END_TIME'])
 
 with ProcessPoolExecutor(max_workers=8) as ppex:
   for t in tqdm(range(0, END_TIME)):
-    msl = cv2.GaussianBlur(nc_s[t][:][:], ksize=(3, 3), sigmaX=2)
+    msl = cv2.GaussianBlur(nc_s[t][:][:], ksize=(3, 3), sigmaX=2) # ガウシアンフィルタ
     tmp = ppex.submit(Low_detection, msl, lon_s, lat_s).result()
     tmp = pd.DataFrame(tmp, columns=['lon_id','lat_id','lon','lat','hPa'])
     tmp.to_csv(f'{OUT_DIR}{t}.csv',index=None)

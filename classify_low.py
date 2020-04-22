@@ -12,7 +12,7 @@ class Classify:
   def __init__(self, file_sqlite, table_name):
     conn = sqlite3.connect(file_sqlite)
     df = pd.read_sql_query(f'SELECT * FROM {table_name}', conn)
-    self.df = df >> select(X.low_id, X.date, X.datetime, X.lon, X.lat, X.hPa)
+    self.df = df >> select(X.low_id, X.datetime, X.lon, X.lat, X.hPa)
 
 
   def geo_to_mesh(self):
@@ -34,3 +34,4 @@ if __name__ == '__main__':
 
   main = Classify(file_sqlite, DB_NAME)
   df = main.geo_to_mesh()
+  print(df)

@@ -33,8 +33,8 @@ if __name__ == '__main__':
   path = config['MOI']['OUT_DATA_PATH']
   END_TIME = int(config['Detection']['END_TIME'])
   
-  m = MOI()
-  moi = m.moi_list(END_TIME)
+  main = MOI()
+  moi = main.moi_list(END_TIME)
   yyyymmddhh = gd.date_list()
   MOI = pd.merge(moi, yyyymmddhh, on='datetime')
   MOI['datetime'] = MOI['datetime'].astype(int)

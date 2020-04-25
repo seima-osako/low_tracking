@@ -22,5 +22,8 @@ def date_list():
     date.append(d.strftime("%Y-%m-%d %H"))
   dt = pd.DataFrame(date, columns=['datetime']).reset_index()
   dt = dt.rename(columns={'index':'datetime', 'datetime':'yyyymmddhh'})
+  dt['yyyymmdd'] = dt.apply(lambda x : x['yyyymmddhh'][:10], axis=1)
+  dt['hh'] = dt.apply(lambda x : x['yyyymmddhh'][11:13], axis=1)
+  dt['datetime'] = dt['datetime'].astype(int)
   
   return dt

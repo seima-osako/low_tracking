@@ -5,6 +5,7 @@ import timeutil as tu
 import sys
 import sqlite3
 import netCDF4
+import pandas as pd
 from dfply import *
 import configparser
 
@@ -144,12 +145,6 @@ if __name__ == '__main__':
   main.make_J_flg()
   # 温帯低気圧分類テーブル完成
   data = main.make_Double_flg()
-
-  #冬型指数のテーブルを読み込む
-  MOI = pd.read_csv(config['MOI']['OUT_DATA_PATH'])
-  # 外部結合させる順番に注意！！
-  data = MOI >> left_join(data, by='datetime') >> \
-    select(X.datetime, X.yyyymmddhh, X.low_id, X.lon, X.lat, X.hPa, X.WAMOI, X.P_flg, X.J_flg, X.Double_flg)
 
   DB_PATH_C = config['Classify']['DB_PATH']
   DB_NAME_C = config['Classify']['DB_NAME']

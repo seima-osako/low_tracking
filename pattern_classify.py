@@ -28,35 +28,44 @@ class Pattern:
   def Low_flg(self):
     tu.start()
     sys.stderr.write("*** 低気圧本体による降雪フラグ付与 ***\n")
-    self.df['type0']=self.df.apply(lambda x : 1 if (x['dist']<=400)&((x['P_flg']==1)|(x['J_flg']==1)) else 0, axis=1)
-    # 同じ日時でも異なる低気圧ログがあるため、共通の日時は全てに再度フラグを振り直す
-    Low = self.df >> filter_by(X.type0==1) >> select(X.datetime, X.station, X.type0) >>rename(Low= X.type0)
-    self.df = self.df >> left_join(Low, by=['datetime', 'station']) >> select(~X.type0) >> distinct()
+    self.df['type_P'] = self.df.apply(lambda x : 1 if (x['dist']<=400)&(x['P_flg']==1) else 0, axis=1)
+    self.df['type_J'] = self.df.apply(lambda x : 1 if (x['dist']<=400)&(x['J_flg']==1) else 0, axis=1)
+
+    t = self.df >> select(X.datetime, X.station, X.type_P, X.type_J) >> \
+    group_by(X.datetime, X.station) >> mutate(P=np.max(X.type_P), J=np.max(X.type_J)) >> \
+      select(X.datetime, X.station, X.P, X.J) >> distinct()
+    t['D'] = t.apply(lambda x : 1 if ((x['P']==1)&(x['J']==1)) else 0, axis=1)
+
+    self.df = self.df >> inner_join(t, by=['datetime', 'station']) >> select(~X.type_P ,~X.type_J)
     tu.end()
 
   def Low_WM_flg(self):
     tu.start()
-    sys.stderr.write("*** 引きの冬型による降雪フラグ付与(Lowが1じゃないとき) ***\n")
-    self.df['type1'] = self.df.apply(lambda x : 1 if (x['Low']!=1)&(x['dist']>400)&\
-                          (x['angle']>=-45)&(x['angle']<=135)&(x['WAMOI']>0)&((x['P_flg']==1)|(x['J_flg']==1)) else 0, axis=1)
-    Low_WM = self.df >> filter_by(X.type1==1) >> select(X.datetime, X.station, X.type1) >>rename(Low_WM= X.type1)
-    self.df = self.df >> left_join(Low_WM, by=['datetime', 'station']) >> select(~X.type1) >> distinct()
+    sys.stderr.write("*** 引きの冬型による降雪フラグ付与(P, J, Dが1じゃないとき) ***\n")
+    self.df['type_P'] = self.df.apply(lambda x : 1 if (x['P']!=1)&(x['J']!=1)&(x['D']!=1)&(x['dist']>400)&\
+                      (x['angle']>=0)&(x['angle']<=135)&(x['WAMOI']>0)&(x['P_flg']==1) else 0, axis=1)
+    self.df['type_J'] = self.df.apply(lambda x : 1 if (x['P']!=1)&(x['J']!=1)&(x['D']!=1)&(x['dist']>400)&\
+                      (x['angle']>=0)&(x['angle']<=135)&(x['WAMOI']>0)&(x['J_flg']==1) else 0, axis=1)
+    
+    t = self.df >> select(X.datetime, X.station, X.type_P, X.type_J) >> \
+      group_by(X.datetime, X.station) >> mutate(P_WM=np.max(X.type_P), J_WM=np.max(X.type_J)) >> \
+      select(X.datetime, X.station, X.P_WM, X.J_WM) >> distinct()
+    t['D_WM'] = t.apply(lambda x : 1 if ((x['P_WM']==1)&(x['J_WM']==1)) else 0, axis=1)
+    
+    self.df = self.df >> inner_join(t, by=['datetime', 'station']) >> select(~X.type_P ,~X.type_J)
     tu.end()
 
   def WM_flg(self):
     tu.start()
     sys.stderr.write("*** 冬型による降雪フラグ付与 ***\n")
-    self.df['type2'] = self.df.apply(lambda x : 1 if (x['Low']!=1)&(x['Low_WM']!=1)&(x['WAMOI']>0)&(x['P_flg']!=1)&(x['J_flg']!=1) else 0, axis=1)
-    WM = self.df >> filter_by(X.type2==1) >> select(X.datetime, X.station, X.type2) >>rename(WM= X.type2)
-    self.df = self.df >> left_join(WM, by=['datetime', 'station']) >> select(~X.type2) >> distinct()
+    self.df['WM'] = self.df.apply(lambda x : 1 if (x['P']!=1)&(x['J']!=1)&(x['D']!=1)&(x['P_WM']!=1)&(x['J_WM']!=1)&(x['D_WM']!=1)&\
+                        (x['WAMOI']>0)&(x['P_flg']!=1)&(x['J_flg']!=1) else 0, axis=1)
     tu.end()
 
   def Other_flg(self):
     tu.start()
     sys.stderr.write("*** どれにも分類されたかった降雪フラグ付与 ***\n")
-    self.df['type3'] = self.df.apply(lambda x : 1 if (x['Low']!=1)&(x['Low_WM']!=1)&(x['WM']!=1) else 0, axis=1)
-    Other = self.df >> filter_by(X.type3==1) >> select(X.datetime, X.station, X.type3) >>rename(Other= X.type3)
-    self.df = self.df >> left_join(Other, by=['datetime', 'station']) >> select(~X.type3) >> distinct()
+    self.df['Other'] = self.df.apply(lambda x : 1 if (x['P']!=1)&(x['J']!=1)&(x['D']!=1)&(x['P_WM']!=1)&(x['J_WM']!=1)&(x['D_WM']!=1)&(x['WM']!=1) else 0, axis=1)
     tu.end()
     return self.df
 

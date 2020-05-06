@@ -21,52 +21,58 @@ def angle(x):
 
 class Pattern:
   def __init__(self, df):
-    df['dist'] = df.apply(dist, axis=1)
-    df['angle'] = df.apply(angle, axis=1)
-    self.df = df >> distinct()
+    df['dist'] = df.swifter.apply(dist, axis=1)
+    df['angle'] = df.swifter.apply(angle, axis=1)
+    self.df = df
 
   def Low_flg(self):
-    tu.start()
+    start()
     sys.stderr.write("*** 低気圧本体による降雪フラグ付与 ***\n")
-    self.df['type_P'] = self.df.apply(lambda x : 1 if (x['dist']<=400)&(x['P_flg']==1) else 0, axis=1)
-    self.df['type_J'] = self.df.apply(lambda x : 1 if (x['dist']<=400)&(x['J_flg']==1) else 0, axis=1)
+    self.df['type_P'] = self.df.swifter.apply(lambda x : 1 if (x['dist']<=400)&(x['P_flg']==1) else 0, axis=1)
+    self.df['type_J'] = self.df.swifter.apply(lambda x : 1 if (x['dist']<=400)&(x['J_flg']==1) else 0, axis=1)
 
-    t = self.df >> select(X.datetime, X.station, X.type_P, X.type_J) >> \
-    group_by(X.datetime, X.station) >> mutate(P=np.max(X.type_P), J=np.max(X.type_J)) >> \
-      select(X.datetime, X.station, X.P, X.J) >> distinct()
-    t['D'] = t.apply(lambda x : 1 if ((x['P']==1)&(x['J']==1)) else 0, axis=1)
+    t = self.df >> select(X.winter, X.datetime, X.type_P, X.type_J, X.Double_flg) >> \
+        group_by(X.winter, X.datetime) >> mutate(P=np.max(X.type_P), J=np.max(X.type_J)) >> \
+        select(X.winter, X.datetime, X.P, X.J, X.Double_flg) >> distinct()
+    # 二つ玉と判定されている時のみ
+    t['D'] = t.swifter.apply(lambda x : 1 if ((x['P']==1)&(x['J']==1)&(x['Double_flg']>=0)) else 0, axis=1)
 
-    self.df = self.df >> inner_join(t, by=['datetime', 'station']) >> select(~X.type_P ,~X.type_J)
-    tu.end()
+    t = t.drop(columns='Double_flg')
+    t = t.loc[t.groupby(['winter', 'datetime'])['D'].idxmax(),:]
+    self.df = self.df >> inner_join(t, by=['winter', 'datetime']) >> select(~X.type_P ,~X.type_J)
+    end()
 
   def Low_WM_flg(self):
-    tu.start()
+    # 方位角0~135°
+    start()
     sys.stderr.write("*** 引きの冬型による降雪フラグ付与(P, J, Dが1じゃないとき) ***\n")
-    self.df['type_P'] = self.df.apply(lambda x : 1 if (x['P']!=1)&(x['J']!=1)&(x['D']!=1)&(x['dist']>400)&\
-                      (x['angle']>=0)&(x['angle']<=135)&(x['WAMOI']>0)&(x['P_flg']==1) else 0, axis=1)
-    self.df['type_J'] = self.df.apply(lambda x : 1 if (x['P']!=1)&(x['J']!=1)&(x['D']!=1)&(x['dist']>400)&\
-                      (x['angle']>=0)&(x['angle']<=135)&(x['WAMOI']>0)&(x['J_flg']==1) else 0, axis=1)
-    
-    t = self.df >> select(X.datetime, X.station, X.type_P, X.type_J) >> \
-      group_by(X.datetime, X.station) >> mutate(P_WM=np.max(X.type_P), J_WM=np.max(X.type_J)) >> \
-      select(X.datetime, X.station, X.P_WM, X.J_WM) >> distinct()
-    t['D_WM'] = t.apply(lambda x : 1 if ((x['P_WM']==1)&(x['J_WM']==1)) else 0, axis=1)
-    
-    self.df = self.df >> inner_join(t, by=['datetime', 'station']) >> select(~X.type_P ,~X.type_J)
-    tu.end()
+    self.df['type_P'] = self.df.swifter.apply(lambda x : 1 if (x['P']!=1)&(x['J']!=1)&(x['D']!=1)&(x['dist']>400)&\
+                          (x['angle']>=0)&(x['angle']<=135)&(x['WAMOI']>0)&(x['P_flg']==1) else 0, axis=1)
+    self.df['type_J'] = self.df.swifter.apply(lambda x : 1 if (x['P']!=1)&(x['J']!=1)&(x['D']!=1)&(x['dist']>400)&\
+                          (x['angle']>=0)&(x['angle']<=135)&(x['WAMOI']>0)&(x['J_flg']==1) else 0, axis=1)
+    t = self.df >> select(X.winter, X.datetime, X.type_P, X.type_J, X.Double_flg) >> \
+        group_by(X.winter, X.datetime) >> mutate(P_WM=np.max(X.type_P), J_WM=np.max(X.type_J)) >> \
+        select(X.winter, X.datetime, X.P_WM, X.J_WM, X.Double_flg) >> distinct()
+    t['D_WM'] = t.swifter.apply(lambda x : 1 if ((x['P_WM']==1)&(x['J_WM']==1)&(x['Double_flg']>=0)) else 0, axis=1)
+
+    t = t.drop(columns='Double_flg')
+    t = t.loc[t.groupby(['winter', 'datetime'])['D_WM'].idxmax(),:]
+    self.df = self.df >> inner_join(t, by=['winter', 'datetime']) >> select(~X.type_P ,~X.type_J)
+    end()
 
   def WM_flg(self):
-    tu.start()
+    start()
     sys.stderr.write("*** 冬型による降雪フラグ付与 ***\n")
-    self.df['WM'] = self.df.apply(lambda x : 1 if (x['P']!=1)&(x['J']!=1)&(x['D']!=1)&(x['P_WM']!=1)&(x['J_WM']!=1)&(x['D_WM']!=1)&\
-                        (x['WAMOI']>0)&(x['P_flg']!=1)&(x['J_flg']!=1) else 0, axis=1)
-    tu.end()
+    self.df['WM'] = self.df.swifter.apply(lambda x : 1 if (x['P']!=1)&(x['J']!=1)&(x['D']!=1)&(x['P_WM']!=1)&(x['J_WM']!=1)&(x['D_WM']!=1)&\
+                            (x['WAMOI']>0)&(x['P_flg']!=1)&(x['J_flg']!=1) else 0, axis=1)
+    end()
 
-  def Other_flg(self):
-    tu.start()
+  def Other(self):
+    start()
     sys.stderr.write("*** どれにも分類されたかった降雪フラグ付与 ***\n")
-    self.df['Other'] = self.df.apply(lambda x : 1 if (x['P']!=1)&(x['J']!=1)&(x['D']!=1)&(x['P_WM']!=1)&(x['J_WM']!=1)&(x['D_WM']!=1)&(x['WM']!=1) else 0, axis=1)
-    tu.end()
+    self.df['Other'] = self.df.swifter.apply(lambda x : 1 if (x['P']!=1)&(x['J']!=1)&(x['D']!=1)&(x['P_WM']!=1)&(x['J_WM']!=1)&(x['D_WM']!=1)&(x['WM']!=1) else 0, axis=1)
+    end()
+    
     return self.df
 
 if __name__ == '__main__':

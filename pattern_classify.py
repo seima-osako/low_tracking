@@ -61,10 +61,11 @@ class Pattern:
     end()
 
   def WM_flg(self):
+    # 気圧勾配が10hPa以上
     start()
-    sys.stderr.write("*** 冬型による降雪フラグ付与 ***\n")
+    sys.stderr.write("*** 強い冬型による降雪フラグ付与 ***\n")
     self.df['WM'] = self.df.swifter.apply(lambda x : 1 if (x['P']!=1)&(x['J']!=1)&(x['D']!=1)&(x['P_WM']!=1)&(x['J_WM']!=1)&(x['D_WM']!=1)&\
-                            (x['WAMOI']>0)&(x['P_flg']!=1)&(x['J_flg']!=1) else 0, axis=1)
+                            (x['WAMOI']>9)&(x['P_flg']!=1)&(x['J_flg']!=1) else 0, axis=1)
     end()
 
   def Other(self):

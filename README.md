@@ -24,13 +24,5 @@
 <img src="./img/5.png" width="50%">
 
 ## 気圧配置の分類手法
-- **毎時の降雪深データ**
-> ["datetime", "date", "station", "h_snow", "lon_s", "lat_s"]
-
-- **冬型指数テーブル**
-
->["datetime", "WAMOI", "yyyy-mm-dd hh", "yyyy-mm-dd", "hh"]
-
-- **毎時の低気圧トラッキングデータ**
-
-> ["low_id", "datetime", "lon", "lat" ,"hPa", "P_flg", "J_flg", "Double_flg"]
+<img src="./img/6.png" width="50%">
+<img src="./img/7.png" width="50%">
